@@ -1,0 +1,2064 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Registry Management System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-2: #f9fafb;
+      --text: #14171f;
+      --muted: #667085;
+      --line: #d9dee7;
+      --line-strong: #b9c1cf;
+      --accent: #2563eb;
+      --accent-2: #0f766e;
+      --danger: #dc2626;
+      --warning: #b45309;
+      --surface-tint: rgba(37, 99, 235, .08);
+      --shadow: 0 18px 45px rgba(16, 24, 40, .10);
+      --radius: 16px;
+      --row-h: 58px;
+      --font: Poppins, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      overflow: hidden;
+    }
+
+    body.drawer-open { overflow: hidden; }
+
+    button, input, select, textarea {
+      font: inherit;
+      color: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 999px;
+      min-height: 40px;
+      padding: 0 16px;
+      cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+    }
+
+    button:hover { background: var(--panel-2); border-color: var(--line-strong); }
+    button:active { transform: translateY(1px); }
+    button:disabled { cursor: not-allowed; opacity: .48; }
+
+    input, select, textarea {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 12px;
+      min-height: 40px;
+      padding: 7px 10px;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .18);
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: auto minmax(210px, 280px) minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      position: relative;
+      z-index: 5;
+    }
+
+    .menu-button {
+      width: 44px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      font-size: 21px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 800;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .file-strip {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      min-width: 0;
+      scrollbar-width: thin;
+    }
+
+    .file-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 170px;
+      min-width: 132px;
+      justify-content: space-between;
+      white-space: nowrap;
+      border-radius: 14px;
+      flex: 0 0 auto;
+    }
+
+    .file-tab.active {
+      background: var(--surface-tint);
+      border-color: var(--accent);
+    }
+
+    .tab-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+
+    .toolbar .spacer { flex: 1; }
+    .search { width: 270px; }
+    .primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(37, 99, 235, .28); }
+    .primary:hover { background: #1d4ed8; }
+    .danger { color: var(--danger); border-color: rgba(220, 38, 38, .45); }
+    .ghost { background: transparent; }
+    .pill { border-radius: 999px; }
+
+    .status {
+      min-width: 76px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .app.summary-collapsed .workspace {
+      grid-template-columns: 1fr 0;
+    }
+
+    .app.summary-collapsed .side {
+      display: none;
+    }
+
+    .sheet-wrap {
+      overflow: auto;
+      min-width: 0;
+      position: relative;
+      background:
+        linear-gradient(var(--bg), var(--bg)) padding-box,
+        linear-gradient(90deg, transparent, rgba(0,0,0,.04), transparent) border-box;
+    }
+
+    .print-watermark {
+      display: none;
+      position: absolute;
+      inset: 0;
+      place-items: center;
+      pointer-events: none;
+      color: rgba(20, 23, 31, .08);
+      font-size: clamp(44px, 9vw, 118px);
+      font-weight: 700;
+      transform: rotate(-24deg);
+      z-index: 10;
+      white-space: nowrap;
+    }
+
+    .exporting-pdf .print-watermark {
+      display: grid;
+    }
+
+    .export-header {
+      display: none;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 28px;
+      padding: 24px 20px 22px;
+      background: #fff;
+      color: #242424;
+    }
+
+    .exporting-pdf .export-header {
+      display: flex;
+    }
+
+    .export-label {
+      margin: 0 0 8px;
+      color: #8a8f98;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 5px;
+    }
+
+    .export-name {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 34px;
+      line-height: 1.05;
+    }
+
+    .export-contact {
+      margin: 0;
+      color: #666;
+      font-size: 15px;
+      line-height: 1.75;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 100%;
+      table-layout: fixed;
+    }
+
+    th, td {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      height: var(--row-h);
+      padding: 0;
+      position: relative;
+      vertical-align: middle;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: var(--panel-2);
+      height: 42px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      user-select: none;
+    }
+
+    th.frozen, td.frozen {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      box-shadow: 1px 0 0 var(--line);
+    }
+
+    th.frozen { z-index: 4; }
+    tr.active-row td { background: #eef4ff; }
+    td.active-col, th.active-col { background: #e8f0ff; }
+    tbody tr[hidden] { display: none; }
+
+    .row-tools {
+      width: 118px;
+      min-width: 118px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .row-tools-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      height: 100%;
+    }
+
+    .drag {
+      cursor: grab;
+      color: var(--muted);
+      padding: 3px;
+      border-radius: 5px;
+    }
+
+    .drag:active { cursor: grabbing; }
+
+    .select-box {
+      width: 16px;
+      height: 16px;
+      min-height: 16px;
+      padding: 0;
+      accent-color: var(--accent);
+    }
+
+    .head-cell {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      align-items: center;
+      gap: 5px;
+      height: 100%;
+      padding: 0 8px;
+    }
+
+    .head-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: text;
+      border-radius: 5px;
+      padding: 5px 4px;
+    }
+
+    .head-title:focus {
+      outline: 2px solid var(--accent);
+      background: var(--panel);
+    }
+
+    .icon {
+      width: 26px;
+      min-height: 26px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      font-size: 13px;
+      border-radius: 9px;
+    }
+
+    .resize {
+      position: absolute;
+      right: -4px;
+      top: 0;
+      width: 8px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 8;
+    }
+
+    .cell {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      padding: 9px 11px;
+      box-shadow: none !important;
+    }
+
+    select.cell { appearance: auto; }
+    td:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
+    .number { text-align: right; font-variant-numeric: tabular-nums; }
+    .readonly { color: var(--muted); background: var(--panel-2); }
+
+    .status-select {
+      border-width: 2px;
+      font-weight: 600;
+    }
+
+    .status-pending { color: #92400e; background: #fffbeb; border-color: #fbbf24; }
+    .status-progress { color: #1d4ed8; background: #eff6ff; border-color: #93c5fd; }
+    .status-complete { color: #047857; background: #ecfdf5; border-color: #6ee7b7; }
+    .status-hold { color: #be123c; background: #fff1f2; border-color: #fda4af; }
+
+    .image-cell {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+    }
+
+    .thumb {
+      width: 64px;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-2);
+      object-fit: cover;
+      object-position: var(--pos, 50% 50%);
+      cursor: zoom-in;
+    }
+
+    .thumb.empty {
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .side {
+      border-left: 1px solid var(--line);
+      background: var(--panel);
+      overflow: auto;
+      padding: 14px;
+    }
+
+    .side-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .36);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+      z-index: 20;
+    }
+
+    .drawer {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: min(420px, calc(100vw - 24px));
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      transform: translateX(-104%);
+      transition: transform .22s ease;
+      z-index: 21;
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .drawer.open { transform: translateX(0); }
+    .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+
+    .drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .drawer-head h2,
+    .drawer h3 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .drawer-list {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .drawer-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 10px;
+      background: var(--panel-2);
+    }
+
+    .drawer-item strong,
+    .drawer-item span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .drawer-item span {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .drawer-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .side h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 10px;
+      background: var(--panel-2);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+
+    .metric strong {
+      font-size: 22px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .panel-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .drop {
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--radius);
+      background: var(--panel-2);
+      padding: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 8px 16px;
+      background: var(--panel);
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .56);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+      padding: 24px;
+    }
+
+    .modal.open { display: flex; }
+
+    .dialog {
+      width: min(620px, 100%);
+      max-height: min(780px, 88vh);
+      overflow: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .dialog h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pdf-options {
+      display: grid;
+      gap: 10px;
+    }
+
+    .choice-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: var(--panel-2);
+    }
+
+    .choice-row input {
+      margin-top: 3px;
+      accent-color: var(--accent);
+    }
+
+    .choice-row strong,
+    .choice-row span {
+      display: block;
+    }
+
+    .choice-row span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 2px;
+    }
+
+    .share-text {
+      width: 100%;
+      min-height: 210px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .image-preview {
+      display: grid;
+      gap: 10px;
+      justify-items: center;
+    }
+
+    .image-preview img {
+      max-width: 100%;
+      max-height: 62vh;
+      border-radius: 8px;
+      object-fit: contain;
+      object-position: var(--pos, 50% 50%);
+      background: var(--panel-2);
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 44px;
+      background: var(--text);
+      color: var(--panel);
+      padding: 9px 12px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 40;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .hidden-file { display: none; }
+
+    @media (max-width: 1100px) {
+      body { overflow: auto; }
+      .app { min-width: 0; height: auto; min-height: 100vh; }
+      .topbar { grid-template-columns: auto minmax(180px, 1fr) auto; }
+      .file-strip { grid-column: 1 / -1; }
+      .top-actions { grid-column: 3; grid-row: 1; }
+      .workspace { grid-template-columns: 1fr; }
+      .side { border-left: 0; border-top: 1px solid var(--line); }
+    }
+
+    @media print {
+      body { overflow: visible; background: white; }
+      .app { display: block; min-width: 0; height: auto; }
+      .topbar, .toolbar, .side, .footer, .modal, .toast, .drawer, .drawer-backdrop { display: none !important; }
+      .workspace, .sheet-wrap { display: block; overflow: visible; }
+      .export-header { display: flex; }
+      .print-watermark { display: grid; position: fixed; }
+      table { width: 100%; min-width: 0; table-layout: auto; }
+      th, td { background: white !important; color: #111 !important; break-inside: avoid; }
+      th.frozen, td.frozen { position: static; box-shadow: none; }
+      .icon, .drag, .select-box, .resize { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <button type="button" id="menuBtn" class="menu-button" aria-label="Open saved files menu"><i class="ri-menu-line"></i></button>
+      <div class="brand">
+        <div class="mark">R</div>
+        <div>
+          <h1>Registry Management</h1>
+          <p>Local spreadsheet workspace</p>
+        </div>
+      </div>
+      <nav class="file-strip" id="fileTabs" aria-label="Registries"></nav>
+      <div class="top-actions">
+        <button type="button" id="newFileBtn" class="primary">New</button>
+        <button type="button" id="renameFileBtn">Rename</button>
+        <button type="button" id="deleteFileBtn" class="danger">Delete</button>
+        <div class="status" id="saveStatus">Saved</div>
+      </div>
+    </header>
+
+    <section class="toolbar" aria-label="Table actions">
+      <button type="button" id="addRowBtn"><i class="ri-insert-row-bottom"></i> Add Row</button>
+      <button type="button" id="addColBtn"><i class="ri-insert-column-right"></i> Add Column</button>
+      <button type="button" id="bulkEditBtn"><i class="ri-edit-2-line"></i> Bulk Edit</button>
+      <button type="button" id="bulkDeleteBtn" class="danger"><i class="ri-delete-bin-line"></i> Delete Selected</button>
+      <input id="searchInput" class="search" type="search" placeholder="Search registry">
+      <div class="spacer"></div>
+      <button type="button" id="summaryToggleBtn"><i class="ri-sidebar-fold-line"></i> Summary</button>
+      <button type="button" id="statusToggleBtn"><i class="ri-checkbox-circle-line"></i> Hide Status</button>
+      <button type="button" id="importBtn"><i class="ri-upload-2-line"></i> Import</button>
+      <button type="button" id="exportXlsxBtn"><i class="ri-file-excel-2-line"></i> Excel</button>
+      <button type="button" id="pdfBtn" class="primary"><i class="ri-file-pdf-2-line"></i> Download PDF</button>
+      <button type="button" id="printBtn"><i class="ri-printer-line"></i> Print</button>
+      <input id="importFile" class="hidden-file" type="file" accept=".csv,.xlsx,.xls,text/csv">
+    </section>
+
+    <main class="workspace">
+      <section class="sheet-wrap" id="sheetWrap" aria-label="Registry sheet">
+        <div class="export-header">
+          <div>
+            <p class="export-label">QUOTATION BY</p>
+            <h2 class="export-name">Shakir Designer</h2>
+          </div>
+          <p class="export-contact">Contact: 8791453147<br>Email: shakirmohd925@gmail.com</p>
+        </div>
+        <div class="print-watermark">Shakir Designer</div>
+        <table id="sheet"></table>
+      </section>
+
+      <aside class="side">
+        <div class="side-head">
+          <h2>Summary</h2>
+          <button type="button" id="collapseSummaryBtn" class="icon" aria-label="Collapse summary"><i class="ri-sidebar-unfold-line"></i></button>
+        </div>
+        <div class="metric">
+          <span>Grand Total</span>
+          <strong id="grandTotal">₹0.00</strong>
+        </div>
+        <div class="metric">
+          <span>Visible Rows</span>
+          <strong id="rowCount">0</strong>
+        </div>
+        <div class="metric">
+          <span>Selected Rows</span>
+          <strong id="selectedCount">0</strong>
+        </div>
+        <div class="drop" style="margin-top: 14px;">
+          Data is stored only in this browser through localStorage. Images are compressed before saving. Use Excel, CSV, PDF, or print for output.
+        </div>
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <span id="activeMeta">No registry loaded</span>
+      <span>Enter moves down. Tab moves across. Drag row and column handles to reorder.</span>
+    </footer>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="drawer" id="drawer" aria-label="Saved files and downloads">
+    <div class="drawer-head">
+      <h2>Files & Downloads</h2>
+      <button type="button" id="closeDrawerBtn" class="icon" aria-label="Close menu"><i class="ri-close-line"></i></button>
+    </div>
+    <h3>Saved Registries</h3>
+    <div class="drawer-list" id="savedFilesList"></div>
+    <h3>Downloaded Files</h3>
+    <div class="drawer-list" id="downloadsList"></div>
+    <button type="button" id="clearDownloadsBtn" class="danger">Clear Download History</button>
+  </aside>
+
+  <div class="modal" id="pdfModal" role="dialog" aria-modal="true" aria-labelledby="pdfTitle">
+    <div class="dialog">
+      <h2 id="pdfTitle">Download PDF</h2>
+      <div class="field">
+        <label for="pdfFileName">File name</label>
+        <input id="pdfFileName" type="text" placeholder="Registry.pdf">
+      </div>
+      <div class="pdf-options">
+        <label class="choice-row">
+          <input type="radio" name="pdfMode" value="dynamic" checked>
+          <span><strong>Dynamic size</strong><span>Uses the full table width and height so wide registries fit better. Best for large quotation PDFs.</span></span>
+        </label>
+        <label class="choice-row">
+          <input type="radio" name="pdfMode" value="standard">
+          <span><strong>Standard page</strong><span>Uses a standard A4 PDF page. Wide tables may overflow; choose Dynamic size for a full-width export.</span></span>
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" data-close-modal>Close</button>
+        <button type="button" id="startPdfBtn" class="primary"><i class="ri-file-pdf-2-line"></i> Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="imageModal" role="dialog" aria-modal="true" aria-labelledby="imageTitle">
+    <div class="dialog">
+      <h2 id="imageTitle">Image Preview</h2>
+      <div class="image-preview">
+        <img id="previewImage" alt="Registry image preview">
+        <input id="imagePosition" type="range" min="0" max="100" value="50" aria-label="Horizontal image position">
+      </div>
+      <div class="dialog-actions">
+        <button type="button" data-close-modal>Close</button>
+        <button type="button" id="replaceImageBtn">Replace</button>
+        <button type="button" id="deleteImageBtn" class="danger"><i class="ri-delete-bin-line"></i> Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module">
+    const App = (() => {
+      const STORAGE_KEY = 'registry.management.system.v1';
+      const SAVE_DELAY = 420;
+      const IMAGE_MAX = 1100;
+      const IMAGE_QUALITY = 0.76;
+      const STATUS_OPTIONS = ['Pending', 'In Progress', 'Complete', 'On Hold'];
+
+      const $ = (selector, root = document) => root.querySelector(selector);
+      const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+      const id = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+      const now = () => Date.now();
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const debounce = (fn, wait) => {
+        let timer = 0;
+        return (...args) => {
+          window.clearTimeout(timer);
+          timer = window.setTimeout(() => fn(...args), wait);
+        };
+      };
+
+      const dom = {
+        app: $('#app'),
+        fileTabs: $('#fileTabs'),
+        sheet: $('#sheet'),
+        sheetWrap: $('#sheetWrap'),
+        saveStatus: $('#saveStatus'),
+        search: $('#searchInput'),
+        importFile: $('#importFile'),
+        grandTotal: $('#grandTotal'),
+        rowCount: $('#rowCount'),
+        selectedCount: $('#selectedCount'),
+        activeMeta: $('#activeMeta'),
+        toast: $('#toast'),
+        pdfModal: $('#pdfModal'),
+        pdfFileName: $('#pdfFileName'),
+        imageModal: $('#imageModal'),
+        previewImage: $('#previewImage'),
+        imagePosition: $('#imagePosition'),
+        drawer: $('#drawer'),
+        drawerBackdrop: $('#drawerBackdrop'),
+        savedFilesList: $('#savedFilesList'),
+        downloadsList: $('#downloadsList')
+      };
+
+      const defaultColumns = () => [
+        { id: id(), name: 'Part Photo', type: 'image', width: 160 },
+        { id: id(), name: 'Part Name', type: 'text', width: 230 },
+        { id: id(), name: 'Cost', type: 'currency', width: 130 },
+        { id: id(), name: 'Qty', type: 'number', width: 92 },
+        { id: id(), name: 'Material', type: 'text', width: 150 },
+        { id: id(), name: 'Total', type: 'total', width: 140 },
+        { id: id(), name: 'Status', type: 'status', width: 150, options: STATUS_OPTIONS }
+      ];
+
+      const createFile = (name = 'Untitled Registry') => {
+        const columns = defaultColumns();
+        return {
+          id: id(),
+          name,
+          createdAt: now(),
+          updatedAt: now(),
+          columns,
+          rows: Array.from({ length: 12 }, () => createRow(columns))
+        };
+      };
+
+      const createRow = (columns) => ({
+        id: id(),
+        selected: false,
+        cells: columns.reduce((acc, column) => {
+          acc[column.id] = column.type === 'image' ? { value: '', position: 50 } : column.type === 'status' ? 'Pending' : '';
+          return acc;
+        }, {})
+      });
+
+      const storage = {
+        load() {
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return this.normalize(parsed);
+          } catch {
+            return null;
+          }
+        },
+        normalize(value) {
+          if (!value || typeof value !== 'object' || !value.files || typeof value.files !== 'object') return null;
+          const files = Object.fromEntries(Object.entries(value.files).filter(([, file]) => file && Array.isArray(file.columns) && Array.isArray(file.rows)));
+          const activeFileId = files[value.activeFileId] ? value.activeFileId : Object.keys(files)[0];
+          const downloads = Array.isArray(value.downloads) ? value.downloads : [];
+          const showStatus = value.showStatus !== false;
+          return activeFileId ? { activeFileId, files, downloads, showStatus } : null;
+        },
+        save(state) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+      };
+
+      const state = {
+        data: storage.load() || (() => {
+          const first = createFile('Product Registry');
+          return { activeFileId: first.id, files: { [first.id]: first }, downloads: [], showStatus: true };
+        })(),
+        search: '',
+        sort: { columnId: '', direction: 'none' },
+        activeCell: { rowId: '', columnId: '' },
+        dragRowId: '',
+        dragColumnId: '',
+        resize: null,
+        imageTarget: null
+      };
+
+      const activeFile = () => state.data.files[state.data.activeFileId];
+      const getColumn = (columnId) => activeFile().columns.find((column) => column.id === columnId);
+      const isStatusColumn = (column) => /^status$/i.test(column.name) || column.type === 'status';
+      const visibleColumns = (columns = activeFile().columns) => state.data.showStatus === false ? columns.filter((column) => !isStatusColumn(column)) : columns;
+      const ensureRequestedHeadings = () => {
+        Object.values(state.data.files).forEach((file) => {
+          const columns = file.columns || [];
+          const byName = (pattern) => columns.find((column) => pattern.test(column.name));
+          const oldImage = byName(/^image$/i);
+          const oldItem = byName(/^item$/i);
+          if (oldImage) oldImage.name = 'Part Photo';
+          if (oldItem) oldItem.name = 'Part Name';
+          const materialColumn = byName(/^material$/i);
+          if (materialColumn) {
+            materialColumn.type = 'text';
+            delete materialColumn.options;
+          }
+          const hasStatus = columns.some((column) => /^status$/i.test(column.name));
+          if (!hasStatus) {
+            const statusColumn = { id: id(), name: 'Status', type: 'status', width: 150, options: STATUS_OPTIONS };
+            columns.push(statusColumn);
+            file.rows.forEach((row) => { row.cells[statusColumn.id] = 'Pending'; });
+          } else {
+            columns.filter((column) => /^status$/i.test(column.name)).forEach((column) => {
+              column.type = 'status';
+              column.options = STATUS_OPTIONS;
+              file.rows.forEach((row) => {
+                if (!row.cells[column.id]) row.cells[column.id] = 'Pending';
+              });
+            });
+          }
+        });
+      };
+      const fileNames = (excludeId = '') => Object.values(state.data.files).filter((file) => file.id !== excludeId).map((file) => file.name.trim().toLowerCase());
+      const hasFileName = (name, excludeId = '') => fileNames(excludeId).includes(String(name || '').trim().toLowerCase());
+      const hasDownloadName = (name) => (state.data.downloads || []).some((item) => item.name.trim().toLowerCase() === String(name || '').trim().toLowerCase());
+      const promptUniqueName = (message, fallback, type, excludeId = '') => {
+        let proposed = prompt(message, fallback);
+        if (proposed === null) return '';
+        proposed = proposed.trim();
+        while (!proposed || (type === 'file' ? hasFileName(proposed, excludeId) : hasDownloadName(proposed))) {
+          proposed = prompt(`${type === 'file' ? 'Registry' : 'Download'} name must be unique. Enter a different name.`, proposed || fallback);
+          if (proposed === null) return '';
+          proposed = proposed.trim();
+        }
+        return proposed;
+      };
+      const parseNumber = (value) => {
+        const text = String(value ?? '').replace(/,/g, '');
+        const match = text.match(/-?\d+(\.\d+)?/);
+        return match ? Number(match[0]) : 0;
+      };
+      const formatMoney = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value || 0);
+      const formatPdfMoney = (value) => `INR ${Number(value || 0).toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}`;
+      const sanitize = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+
+      const rowTotal = (row, columns = activeFile().columns) => {
+        const costCol = columns.find((column) => /cost|price|rate/i.test(column.name) || column.type === 'currency');
+        const qtyCol = columns.find((column) => /qty|quantity/i.test(column.name) || column.type === 'number');
+        return parseNumber(row.cells[costCol?.id]) * parseNumber(row.cells[qtyCol?.id]);
+      };
+
+      const getCellText = (row, column) => {
+        const value = row.cells[column.id];
+        if (column.type === 'image') return value && typeof value === 'object' && value.value ? '[image]' : '';
+        if (column.type === 'total') return String(rowTotal(row));
+        return String(value ?? '');
+      };
+
+      const statusClass = (value) => {
+        const normalized = String(value || '').toLowerCase();
+        if (normalized.includes('complete') || normalized.includes('done')) return 'status-complete';
+        if (normalized.includes('progress') || normalized.includes('working')) return 'status-progress';
+        if (normalized.includes('hold') || normalized.includes('blocked')) return 'status-hold';
+        return 'status-pending';
+      };
+
+      const filteredRows = () => {
+        const file = activeFile();
+        const query = state.search.trim().toLowerCase();
+        let rows = file.rows;
+        if (query) {
+          rows = rows.filter((row) => file.columns.some((column) => getCellText(row, column).toLowerCase().includes(query)));
+        }
+        if (state.sort.direction !== 'none') {
+          const column = getColumn(state.sort.columnId);
+          if (column) {
+            rows = [...rows].sort((a, b) => {
+              const left = column.type === 'number' || column.type === 'currency' || column.type === 'total' ? parseNumber(getCellText(a, column)) : getCellText(a, column).toLowerCase();
+              const right = column.type === 'number' || column.type === 'currency' || column.type === 'total' ? parseNumber(getCellText(b, column)) : getCellText(b, column).toLowerCase();
+              const result = left > right ? 1 : left < right ? -1 : 0;
+              return state.sort.direction === 'asc' ? result : -result;
+            });
+          }
+        }
+        return rows;
+      };
+
+      const requestSave = debounce(() => {
+        dom.saveStatus.textContent = 'Saving...';
+        activeFile().updatedAt = now();
+        window.setTimeout(() => {
+          try {
+            storage.save(state.data);
+            dom.saveStatus.textContent = 'Saved';
+          } catch (error) {
+            dom.saveStatus.textContent = 'Storage full';
+            toast('Could not save. Remove large images or export to Excel/PDF.');
+          }
+        }, 80);
+      }, SAVE_DELAY);
+
+      const commit = (render = true) => {
+        requestSave();
+        if (render) renderer.render();
+      };
+
+      const toast = (message) => {
+        dom.toast.textContent = message;
+        dom.toast.classList.add('show');
+        window.clearTimeout(toast.timer);
+        toast.timer = window.setTimeout(() => dom.toast.classList.remove('show'), 2200);
+      };
+
+      const renderer = {
+        render() {
+          this.files();
+          this.table();
+          this.summary();
+        },
+        files() {
+          const active = state.data.activeFileId;
+          dom.fileTabs.replaceChildren(...Object.values(state.data.files).map((file) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `file-tab${file.id === active ? ' active' : ''}`;
+            button.dataset.action = 'switch-file';
+            button.dataset.fileId = file.id;
+            button.innerHTML = `<i class="ri-file-line"></i><span class="tab-name">${sanitize(file.name)}</span><span>${file.rows.length}</span>`;
+            return button;
+          }));
+          this.drawer();
+        },
+        drawer() {
+          const files = Object.values(state.data.files).sort((a, b) => b.updatedAt - a.updatedAt);
+          dom.savedFilesList.innerHTML = files.map((file) => `<div class="drawer-item">
+            <div><strong>${sanitize(file.name)}</strong><span>${file.rows.length} rows • ${new Date(file.updatedAt).toLocaleString()}</span></div>
+            <div class="drawer-actions">
+              <button type="button" class="icon" data-action="drawer-open-file" data-file-id="${file.id}" title="Open"><i class="ri-folder-open-line"></i></button>
+              <button type="button" class="icon danger" data-action="drawer-delete-file" data-file-id="${file.id}" title="Delete"><i class="ri-delete-bin-line"></i></button>
+            </div>
+          </div>`).join('');
+          const downloads = state.data.downloads || [];
+          dom.downloadsList.innerHTML = downloads.length ? downloads.map((item) => `<div class="drawer-item">
+            <div><strong>${sanitize(item.name)}</strong><span>${sanitize(item.type)} • ${new Date(item.createdAt).toLocaleString()}</span></div>
+            <div class="drawer-actions"><button type="button" class="icon danger" data-action="drawer-delete-download" data-download-id="${item.id}" title="Remove"><i class="ri-close-line"></i></button></div>
+          </div>`).join('') : '<div class="drop">No downloaded files yet.</div>';
+        },
+        table() {
+          const file = activeFile();
+          const rows = filteredRows();
+          const columns = visibleColumns(file.columns);
+          const colgroup = `<col style="width:118px">${columns.map((column) => `<col style="width:${clamp(column.width || 150, 80, 520)}px">`).join('')}`;
+          const thead = `<thead><tr><th class="row-tools frozen"><div class="row-tools-inner"><input class="select-box" type="checkbox" data-action="select-all" ${file.rows.length && file.rows.every((row) => row.selected) ? 'checked' : ''}><span>S.No</span></div></th>${columns.map((column, index) => this.header(column, index)).join('')}</tr></thead>`;
+          const tbody = `<tbody>${rows.map((row, index) => this.row(row, index, columns)).join('')}</tbody>`;
+          dom.sheet.innerHTML = `${colgroup}${thead}${tbody}`;
+        },
+        header(column, index) {
+          const active = state.activeCell.columnId === column.id ? ' active-col' : '';
+          const sortMark = state.sort.columnId === column.id && state.sort.direction !== 'none' ? (state.sort.direction === 'asc' ? '<i class="ri-sort-asc"></i>' : '<i class="ri-sort-desc"></i>') : '<i class="ri-expand-up-down-line"></i>';
+          return `<th class="${index === 0 ? 'frozen' : ''}${active}" data-column-id="${column.id}" draggable="true">
+            <div class="head-cell">
+              <span class="head-title" contenteditable="true" spellcheck="false" data-action="rename-column">${sanitize(column.name)}</span>
+              <button type="button" class="icon" data-action="sort-column" title="Sort">${sortMark}</button>
+              <button type="button" class="icon danger" data-action="delete-column" title="Delete column"><i class="ri-delete-bin-line"></i></button>
+              <button type="button" class="icon drag" data-action="drag-column" title="Drag column"><i class="ri-draggable"></i></button>
+            </div>
+            <span class="resize" data-action="resize-column"></span>
+          </th>`;
+        },
+        row(row, visibleIndex, columns) {
+          const activeRow = state.activeCell.rowId === row.id ? ' active-row' : '';
+          const cells = columns.map((column, index) => this.cell(row, column, index)).join('');
+          return `<tr class="${activeRow}" data-row-id="${row.id}" draggable="true">
+            <td class="row-tools frozen">
+              <div class="row-tools-inner">
+                <span class="drag" data-action="drag-row" title="Drag row"><i class="ri-draggable"></i></span>
+                <input class="select-box" type="checkbox" data-action="select-row" ${row.selected ? 'checked' : ''}>
+                <span>${visibleIndex + 1}</span>
+                <button type="button" class="icon danger" data-action="delete-row" title="Delete row"><i class="ri-delete-bin-line"></i></button>
+              </div>
+            </td>${cells}
+          </tr>`;
+        },
+        cell(row, column, index) {
+          const active = state.activeCell.columnId === column.id ? ' active-col' : '';
+          const frozen = index === 0 ? ' frozen' : '';
+          const value = row.cells[column.id];
+          let inner = '';
+          if (column.type === 'image') {
+            const image = value && typeof value === 'object' ? value : { value: '', position: 50 };
+            const style = `--pos:${image.position || 50}% 50%`;
+            inner = `<div class="image-cell">
+              ${image.value ? `<img class="thumb" src="${image.value}" alt="${sanitize(column.name)}" style="${style}" data-action="preview-image">` : `<button type="button" class="thumb empty" data-action="upload-image">Upload</button>`}
+              <button type="button" class="icon" data-action="upload-image" title="Replace image"><i class="ri-image-edit-line"></i></button>
+              <button type="button" class="icon danger" data-action="clear-image" title="Delete image"><i class="ri-delete-bin-line"></i></button>
+            </div>`;
+          } else if (column.type === 'select' || column.type === 'status') {
+            const options = column.options || STATUS_OPTIONS;
+            const statusClassName = column.type === 'status' ? ` status-select ${statusClass(value)}` : '';
+            inner = `<select class="cell${statusClassName}" data-action="edit-cell">${options.map((option) => `<option value="${sanitize(option)}" ${option === value ? 'selected' : ''}>${sanitize(option)}</option>`).join('')}</select>`;
+          } else if (column.type === 'total') {
+            inner = `<input class="cell number readonly" value="${formatMoney(rowTotal(row))}" readonly tabindex="-1">`;
+          } else {
+            const inputType = column.type === 'number' || column.type === 'currency' ? 'text' : 'text';
+            const numberClass = column.type === 'number' || column.type === 'currency' ? ' number' : '';
+            inner = `<input class="cell${numberClass}" type="${inputType}" value="${sanitize(value)}" data-action="edit-cell">`;
+          }
+          return `<td class="${frozen}${active}" data-row-id="${row.id}" data-column-id="${column.id}">${inner}</td>`;
+        },
+        summary() {
+          const file = activeFile();
+          const visible = filteredRows();
+          const selected = file.rows.filter((row) => row.selected).length;
+          const total = file.rows.reduce((sum, row) => sum + rowTotal(row, file.columns), 0);
+          dom.grandTotal.textContent = formatMoney(total);
+          dom.rowCount.textContent = String(visible.length);
+          dom.selectedCount.textContent = String(selected);
+          dom.activeMeta.textContent = `${file.name} • Updated ${new Date(file.updatedAt).toLocaleString()}`;
+        }
+      };
+
+      const updateCell = (rowId, columnId, value) => {
+        const file = activeFile();
+        const row = file.rows.find((item) => item.id === rowId);
+        const column = file.columns.find((item) => item.id === columnId);
+        if (!row || !column || column.type === 'total') return;
+        row.cells[columnId] = value;
+        state.activeCell = { rowId, columnId };
+        requestSave();
+        renderer.summary();
+        if (column.type === 'currency' || column.type === 'number') {
+          window.requestAnimationFrame(() => renderer.table());
+        }
+      };
+
+      const addRow = () => {
+        activeFile().rows.push(createRow(activeFile().columns));
+        commit();
+      };
+
+      const addColumn = () => {
+        const name = prompt('Column name', 'New Column');
+        if (!name) return;
+        const type = prompt('Type: text, number, currency, status, image, total', 'text') || 'text';
+        const normalized = ['text', 'number', 'currency', 'status', 'image', 'total'].includes(type.toLowerCase()) ? type.toLowerCase() : 'text';
+        const column = { id: id(), name: name.trim(), type: normalized, width: normalized === 'image' ? 160 : 150 };
+        if (normalized === 'status') column.options = STATUS_OPTIONS;
+        activeFile().columns.push(column);
+        activeFile().rows.forEach((row) => {
+          row.cells[column.id] = normalized === 'image' ? { value: '', position: 50 } : normalized === 'status' ? 'Pending' : '';
+        });
+        commit();
+      };
+
+      const deleteColumn = (columnId) => {
+        const file = activeFile();
+        if (file.columns.length <= 1) return toast('At least one column is required.');
+        const column = getColumn(columnId);
+        if (!column || !confirm(`Delete "${column.name}" column?`)) return;
+        file.columns = file.columns.filter((item) => item.id !== columnId);
+        file.rows.forEach((row) => delete row.cells[columnId]);
+        commit();
+      };
+
+      const moveItem = (list, fromId, toId) => {
+        const from = list.findIndex((item) => item.id === fromId);
+        const to = list.findIndex((item) => item.id === toId);
+        if (from < 0 || to < 0 || from === to) return false;
+        const [item] = list.splice(from, 1);
+        list.splice(to, 0, item);
+        return true;
+      };
+
+      const selectFile = (fileId) => {
+        if (!state.data.files[fileId]) return;
+        state.data.activeFileId = fileId;
+        state.search = '';
+        dom.search.value = '';
+        commit();
+      };
+
+      const deleteFile = (fileId) => {
+        const file = state.data.files[fileId];
+        const keys = Object.keys(state.data.files);
+        if (!file) return;
+        if (keys.length <= 1) return toast('Create another registry before deleting this one.');
+        if (!confirm(`Delete "${file.name}"?`)) return;
+        delete state.data.files[fileId];
+        if (state.data.activeFileId === fileId) state.data.activeFileId = Object.keys(state.data.files)[0];
+        commit();
+      };
+
+      const openDrawer = () => {
+        renderer.files();
+        dom.drawer.classList.add('open');
+        dom.drawerBackdrop.classList.add('open');
+        document.body.classList.add('drawer-open');
+      };
+
+      const closeDrawer = () => {
+        dom.drawer.classList.remove('open');
+        dom.drawerBackdrop.classList.remove('open');
+        document.body.classList.remove('drawer-open');
+      };
+
+      const compressImage = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Could not read image.'));
+        reader.onload = () => {
+          const image = new Image();
+          image.onerror = () => reject(new Error('Could not decode image.'));
+          image.onload = () => {
+            const scale = Math.min(1, IMAGE_MAX / Math.max(image.width, image.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(image.width * scale));
+            canvas.height = Math.max(1, Math.round(image.height * scale));
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', IMAGE_QUALITY));
+          };
+          image.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const chooseImage = async (rowId, columnId) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          if (!file) return;
+          const row = activeFile().rows.find((item) => item.id === rowId);
+          if (!row) return;
+          row.cells[columnId] = { value: await compressImage(file), position: 50 };
+          commit();
+        };
+        input.click();
+      };
+
+      const exportRows = () => {
+        const file = activeFile();
+        const columns = visibleColumns(file.columns);
+        return file.rows.map((row) => Object.fromEntries(columns.map((column) => [column.name, column.type === 'total' ? rowTotal(row) : getCellText(row, column)])));
+      };
+
+      const toCsv = (rows) => {
+        if (!rows.length) return '';
+        const headers = Object.keys(rows[0]);
+        const esc = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+        return [headers.map(esc).join(','), ...rows.map((row) => headers.map((header) => esc(row[header])).join(','))].join('\n');
+      };
+
+      const download = (name, content, type) => {
+        const blob = new Blob([content], { type });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = name;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        recordDownload(name, type);
+      };
+
+      const recordDownload = (name, type) => {
+        state.data.downloads = [{ id: id(), name, type, createdAt: now() }, ...(state.data.downloads || [])].slice(0, 80);
+        commit(false);
+        renderer.files();
+      };
+
+      const requestExportName = (extension) => {
+        const cleanFile = activeFile().name.replace(/[\\/:*?"<>|]/g, '-');
+        const base = `${cleanFile}-${new Date().toISOString().slice(0, 10)}.${extension}`;
+        let proposed = prompt(`Export file name (.${extension})`, base);
+        if (proposed === null) return '';
+        proposed = proposed.trim();
+        const normalize = (name) => name.toLowerCase().endsWith(`.${extension}`) ? name : `${name}.${extension}`;
+        while (!proposed || hasDownloadName(normalize(proposed))) {
+          proposed = prompt('Download name already exists. Enter a different file name.', proposed || base);
+          if (proposed === null) return '';
+          proposed = proposed.trim();
+        }
+        return normalize(proposed);
+      };
+
+      const inlineExportStyles = (root) => {
+        root.querySelectorAll('*').forEach((node) => {
+          node.style.boxShadow = 'none';
+          node.style.position = node.classList.contains('print-watermark') ? 'absolute' : 'static';
+          node.style.transform = node.classList.contains('print-watermark') ? 'rotate(-24deg)' : 'none';
+        });
+        root.querySelectorAll('th,td').forEach((cell) => {
+          cell.style.background = '#ffffff';
+          cell.style.color = '#111827';
+          cell.style.borderColor = '#d9dee7';
+        });
+        root.querySelectorAll('.icon,.drag,.select-box,.resize').forEach((node) => node.remove());
+        root.querySelectorAll('input,select').forEach((field) => {
+          const text = document.createElement('div');
+          text.textContent = field.tagName === 'SELECT'
+            ? field.options[field.selectedIndex]?.text || field.value
+            : field.value;
+          text.style.padding = '10px 11px';
+          text.style.minHeight = '38px';
+          text.style.textAlign = field.classList.contains('number') ? 'right' : 'left';
+          field.replaceWith(text);
+        });
+        root.querySelectorAll('.export-header').forEach((node) => { node.style.display = 'flex'; });
+        root.querySelectorAll('.print-watermark').forEach((node) => {
+          node.style.display = 'grid';
+          node.style.position = 'absolute';
+          node.style.inset = '0';
+          node.style.zIndex = '0';
+        });
+      };
+
+      const isExportRowFilled = (row, columns) => columns.some((column) => {
+        if (column.type === 'total') return false;
+        if (column.type === 'status') return false;
+        const value = row.cells[column.id];
+        if (column.type === 'image') return Boolean(value && typeof value === 'object' && value.value);
+        return String(value ?? '').trim() !== '';
+      });
+
+      const exportColumnWidth = (column, rows) => {
+        if (column.type === 'image') return 130;
+        if (column.type === 'number') return 85;
+        if (column.type === 'currency' || column.type === 'total') return 120;
+        const maxLength = Math.max(
+          column.name.length,
+          ...rows.map((row) => getCellText(row, column).length)
+        );
+        return clamp(maxLength * 9 + 42, 110, 260);
+      };
+
+      const buildPdfElement = (selectedMode) => {
+        const file = activeFile();
+        const columns = visibleColumns(file.columns);
+        const rows = file.rows.filter((row) => isExportRowFilled(row, columns));
+        const exportRows = rows.length ? rows : file.rows.slice(0, 1);
+        const columnWidths = columns.map((column) => exportColumnWidth(column, exportRows));
+        const tableWidth = 72 + columnWidths.reduce((sum, width) => sum + width, 0);
+        const total = exportRows.reduce((sum, row) => sum + rowTotal(row, file.columns), 0);
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = [
+          'position:absolute',
+          'left:0',
+          'top:0',
+          'z-index:9999',
+          'background:#fff',
+          'color:#1f2937',
+          'font-family:Poppins,Arial,sans-serif',
+          'padding:24px',
+          `width:${selectedMode === 'dynamic' ? Math.max(794, tableWidth + 48) : 1123}px`,
+          'box-sizing:border-box'
+        ].join(';');
+
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:32px;margin-bottom:26px;';
+        header.innerHTML = `
+          <div>
+            <div style="color:#8a8f98;font-size:12px;font-weight:700;letter-spacing:5px;margin-bottom:8px;">QUOTATION BY</div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:34px;font-weight:700;line-height:1.05;color:#242424;">Shakir Designer</div>
+          </div>
+          <div style="color:#666;font-size:15px;line-height:1.75;text-align:right;white-space:nowrap;">Contact: 8791453147<br>Email: shakirmohd925@gmail.com</div>
+        `;
+
+        const watermark = document.createElement('div');
+        watermark.textContent = 'Shakir Designer';
+        watermark.style.cssText = [
+          'position:absolute',
+          'left:12%',
+          'top:42%',
+          'font-size:96px',
+          'font-weight:700',
+          'color:rgba(17,24,39,.06)',
+          'transform:rotate(-24deg)',
+          'transform-origin:center',
+          'white-space:nowrap',
+          'pointer-events:none',
+          'z-index:0'
+        ].join(';');
+
+        const table = document.createElement('table');
+        table.style.cssText = `position:relative;z-index:1;border-collapse:collapse;width:${tableWidth}px;table-layout:fixed;background:#fff;`;
+        const colgroup = document.createElement('colgroup');
+        colgroup.innerHTML = `<col style="width:72px">${columnWidths.map((width) => `<col style="width:${width}px">`).join('')}`;
+        const thead = document.createElement('thead');
+        thead.innerHTML = `<tr><th style="text-align:left;">S.No</th>${columns.map((column) => `<th>${sanitize(column.name)}</th>`).join('')}</tr>`;
+        thead.querySelectorAll('th').forEach((th) => {
+          th.style.cssText = 'background:#f8fafc;color:#64748b;border:1px solid #d9dee7;padding:12px 14px;font-size:12px;font-weight:700;text-align:left;letter-spacing:.3px;';
+        });
+
+        const tbody = document.createElement('tbody');
+        tbody.innerHTML = exportRows.map((row, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            ${columns.map((column) => {
+              const value = row.cells[column.id];
+              if (column.type === 'image') {
+                const image = value && typeof value === 'object' ? value.value : '';
+                return `<td>${image ? `<img src="${image}" alt="${sanitize(column.name)}" style="width:84px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;">` : ''}</td>`;
+              }
+              const text = column.type === 'total' ? formatMoney(rowTotal(row, file.columns)) : getCellText(row, column);
+              const align = column.type === 'number' || column.type === 'currency' || column.type === 'total' ? 'right' : 'left';
+              return `<td style="text-align:${align};">${sanitize(text)}</td>`;
+            }).join('')}
+          </tr>
+        `).join('');
+        tbody.querySelectorAll('td').forEach((td) => {
+          td.style.border = '1px solid #e2e8f0';
+          td.style.padding = '12px 14px';
+          td.style.minHeight = '42px';
+          td.style.fontSize = '13px';
+          td.style.verticalAlign = 'middle';
+          td.style.wordBreak = 'break-word';
+          td.style.background = '#fff';
+        });
+
+        const footer = document.createElement('div');
+        footer.style.cssText = `position:relative;z-index:1;width:${tableWidth}px;margin-top:18px;display:flex;justify-content:flex-end;`;
+        footer.innerHTML = `<div style="border-top:2px solid #111827;padding-top:10px;min-width:240px;display:flex;justify-content:space-between;gap:24px;font-size:15px;"><strong>Grand Total</strong><strong>${formatMoney(total)}</strong></div>`;
+
+        table.append(colgroup, thead, tbody);
+        wrapper.append(header, watermark, table, footer);
+        return { element: wrapper, width: selectedMode === 'dynamic' ? Math.max(794, tableWidth + 48) : 1123, height: Math.max(1123, exportRows.length * 62 + 220) };
+      };
+
+      const getPdfRows = () => {
+        const file = activeFile();
+        const columns = visibleColumns(file.columns);
+        const rows = file.rows.filter((row) => isExportRowFilled(row, columns));
+        return { file, columns, rows };
+      };
+
+      const loadJsPdf = async () => {
+        if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+        await new Promise((resolve, reject) => {
+          const existing = document.querySelector('script[data-lib="jspdf"]');
+          if (existing) {
+            existing.addEventListener('load', resolve, { once: true });
+            existing.addEventListener('error', reject, { once: true });
+            return;
+          }
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+          script.dataset.lib = 'jspdf';
+          script.onload = resolve;
+          script.onerror = () => reject(new Error('PDF engine could not load.'));
+          document.head.appendChild(script);
+        });
+        if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+        throw new Error('PDF engine unavailable.');
+      };
+
+      const drawPdfHeader = (pdf, pageWidth, margin) => {
+        pdf.setTextColor(138, 143, 152);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(12);
+        pdf.text('Q U O T A T I O N   B Y', margin, 38);
+        pdf.setTextColor(36, 36, 36);
+        pdf.setFont('times', 'bold');
+        pdf.setFontSize(32);
+        pdf.text('Shakir Designer', margin, 76);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(102, 102, 102);
+        pdf.setFontSize(14);
+        pdf.text('Contact: 8791453147', pageWidth - margin, 46, { align: 'right' });
+        pdf.text('Email: shakirmohd925@gmail.com', pageWidth - margin, 74, { align: 'right' });
+      };
+
+      const drawPdfWatermark = (pdf, pageWidth, pageHeight) => {
+        pdf.saveGraphicsState?.();
+        pdf.setTextColor(224, 227, 232);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(Math.min(118, Math.max(68, pageWidth / 7.5)));
+        pdf.text('Shakir Designer', pageWidth / 2, pageHeight / 2, {
+          align: 'center',
+          angle: -28
+        });
+        pdf.restoreGraphicsState?.();
+      };
+
+      const wrapPdfText = (pdf, text, maxWidth) => {
+        const value = String(text || '');
+        return pdf.splitTextToSize(value, Math.max(20, maxWidth));
+      };
+
+      const exportPdfWithJsPdf = async (name, selectedMode) => {
+        const jsPDF = await loadJsPdf();
+        const { file, columns } = getPdfRows();
+        const exportItems = file.rows
+          .map((row, index) => ({ row, originalIndex: index + 1 }))
+          .filter((item) => isExportRowFilled(item.row, columns));
+        if (!exportItems.length) return toast('Add at least one entry before exporting PDF.');
+        const rows = exportItems.map((item) => item.row);
+        const columnWidths = columns.map((column) => exportColumnWidth(column, rows));
+        const serialWidth = 56;
+        const margin = 24;
+        const gapWidth = 0;
+        const tableWidth = serialWidth + columnWidths.reduce((sum, width) => sum + width, 0) + gapWidth;
+        const pageWidth = selectedMode === 'dynamic' ? Math.max(842, tableWidth + margin * 2) : 842;
+        const rowHeight = 46;
+        const headerHeight = 150;
+        const footerHeight = 78;
+        const pageHeight = selectedMode === 'dynamic'
+          ? Math.max(595, headerHeight + 44 + rows.length * rowHeight + footerHeight)
+          : 595;
+        if (selectedMode === 'standard' && tableWidth + margin * 2 > pageWidth) {
+          alert('This registry is wider than a standard PDF page. Some columns may be tight. Choose Dynamic size for full-width export.');
+        }
+        const pdf = new jsPDF({
+          orientation: pageWidth > pageHeight ? 'landscape' : 'portrait',
+          unit: 'px',
+          format: [pageWidth, pageHeight],
+          compress: true
+        });
+
+        drawPdfHeader(pdf, pageWidth, margin);
+        drawPdfWatermark(pdf, pageWidth, pageHeight);
+
+        let x = margin;
+        let y = headerHeight;
+        const drawCell = (text, width, height, options = {}) => {
+          pdf.setDrawColor(226, 232, 240);
+          pdf.setLineWidth(1);
+          pdf.setFillColor(options.fill || '#ffffff');
+          pdf.rect(x, y, width, height, 'FD');
+          pdf.setTextColor(options.color || '#1f2937');
+          pdf.setFont('helvetica', options.bold ? 'bold' : 'normal');
+          pdf.setFontSize(options.size || 13);
+          const lines = wrapPdfText(pdf, text, width - 18).slice(0, 2);
+          const textY = y + height / 2 - ((lines.length - 1) * 7) + 5;
+          const textX = options.align === 'center' ? x + width / 2 : options.align === 'right' ? x + width - 10 : x + 10;
+          pdf.text(lines, textX, textY, { align: options.align || 'left' });
+          x += width;
+        };
+
+        drawCell('S.No', serialWidth, 44, { fill: '#f8fafc', color: '#64748b', bold: true, size: 12 });
+        columns.forEach((column, index) => drawCell(column.name, columnWidths[index], 44, { fill: '#f8fafc', color: '#64748b', bold: true, size: 12 }));
+
+        exportItems.forEach((item, rowIndex) => {
+          const row = item.row;
+          y += rowIndex === 0 ? 44 : rowHeight;
+          x = margin;
+          drawCell(String(item.originalIndex), serialWidth, rowHeight);
+          columns.forEach((column, index) => {
+            const width = columnWidths[index];
+            if (column.type === 'image') {
+              pdf.setDrawColor(226, 232, 240);
+              pdf.setFillColor('#ffffff');
+              pdf.rect(x, y, width, rowHeight, 'FD');
+              const image = row.cells[column.id];
+              if (image && typeof image === 'object' && image.value) {
+                try {
+                  pdf.addImage(image.value, 'JPEG', x + 10, y + 7, Math.min(56, width - 20), 32);
+                } catch {
+                  pdf.setTextColor(100, 116, 139);
+                  pdf.text('Image', x + 10, y + 28);
+                }
+              }
+              x += width;
+              return;
+            }
+            const text = column.type === 'total' ? formatPdfMoney(rowTotal(row, file.columns)) : getCellText(row, column);
+            const align = column.type === 'total' ? 'center' : column.type === 'number' || column.type === 'currency' ? 'right' : 'left';
+            drawCell(text, width, rowHeight, { align });
+          });
+        });
+
+        const total = rows.reduce((sum, row) => sum + rowTotal(row, file.columns), 0);
+        const totalWidth = Math.min(360, tableWidth);
+        const totalX = margin + tableWidth - totalWidth;
+        const totalY = y + rowHeight + 28;
+        pdf.setDrawColor(17, 24, 39);
+        pdf.setLineWidth(2);
+        pdf.line(totalX, totalY, totalX + totalWidth, totalY);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(17, 24, 39);
+        pdf.setFontSize(16);
+        pdf.text('Grand Total', totalX, totalY + 38);
+        pdf.text(formatPdfMoney(total), totalX + totalWidth - 6, totalY + 38, { align: 'right' });
+
+        pdf.save(name);
+      };
+
+      const openPdfModal = () => {
+        const name = requestExportName('pdf');
+        if (!name) return;
+        dom.pdfFileName.value = name;
+        dom.pdfModal.classList.add('open');
+      };
+
+      const exportPdf = async () => {
+        const selectedMode = document.querySelector('input[name="pdfMode"]:checked')?.value || 'dynamic';
+        const rawName = dom.pdfFileName.value.trim();
+        if (!rawName) return toast('Enter a PDF file name.');
+        const name = rawName.toLowerCase().endsWith('.pdf') ? rawName : `${rawName}.pdf`;
+        if (hasDownloadName(name)) return toast('Download name already exists. Use a different name.');
+        try {
+          dom.pdfModal.classList.remove('open');
+          await exportPdfWithJsPdf(name, selectedMode);
+          recordDownload(name, 'application/pdf');
+        } catch (error) {
+          console.warn('PDF export failed', error);
+          toast(`Could not generate PDF: ${error?.message || 'export failed'}`);
+        }
+      };
+
+      const loadXlsx = () => new Promise((resolve, reject) => {
+        if (window.XLSX) return resolve(window.XLSX);
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        script.onload = () => resolve(window.XLSX);
+        script.onerror = () => reject(new Error('Excel library could not load.'));
+        document.head.appendChild(script);
+      });
+
+      const loadHtml2Pdf = () => new Promise((resolve, reject) => {
+        if (window.html2pdf) return resolve(window.html2pdf);
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+        script.onload = () => resolve(window.html2pdf);
+        script.onerror = () => reject(new Error('PDF library could not load.'));
+        document.head.appendChild(script);
+      });
+
+      const parseCsv = (text) => {
+        const rows = [];
+        let row = [], value = '', quoted = false;
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i], next = text[i + 1];
+          if (char === '"' && quoted && next === '"') { value += '"'; i++; }
+          else if (char === '"') quoted = !quoted;
+          else if (char === ',' && !quoted) { row.push(value); value = ''; }
+          else if ((char === '\n' || char === '\r') && !quoted) {
+            if (char === '\r' && next === '\n') i++;
+            row.push(value); rows.push(row); row = []; value = '';
+          } else value += char;
+        }
+        row.push(value);
+        if (row.some(Boolean)) rows.push(row);
+        return rows;
+      };
+
+      const importMatrix = (matrix, name = 'Imported Registry') => {
+        if (!matrix.length) return toast('No rows found.');
+        const uniqueName = hasFileName(name) ? promptUniqueName('Imported registry name already exists. Enter a different name.', name, 'file') : name;
+        if (!uniqueName) return;
+        const headers = matrix[0].map((item, index) => String(item || `Column ${index + 1}`));
+        const columns = headers.map((header) => ({
+          id: id(),
+          name: header,
+          type: /total/i.test(header) ? 'total' : /status/i.test(header) ? 'status' : /qty|quantity/i.test(header) ? 'number' : /cost|price|rate/i.test(header) ? 'currency' : 'text',
+          width: 150,
+          options: /status/i.test(header) ? STATUS_OPTIONS : undefined
+        }));
+        const file = { id: id(), name: uniqueName, createdAt: now(), updatedAt: now(), columns, rows: [] };
+        file.rows = matrix.slice(1).map((items) => ({
+          id: id(),
+          selected: false,
+          cells: Object.fromEntries(columns.map((column, index) => [column.id, items[index] ?? '']))
+        }));
+        if (!file.rows.length) file.rows.push(createRow(columns));
+        state.data.files[file.id] = file;
+        state.data.activeFileId = file.id;
+        commit();
+      };
+
+      const bindEvents = () => {
+        document.addEventListener('click', async (event) => {
+          const target = event.target.closest('[data-action], button');
+          if (!target) return;
+          const action = target.dataset.action || target.id;
+          const td = target.closest('td');
+          const th = target.closest('th');
+          const rowId = td?.dataset.rowId || target.closest('tr')?.dataset.rowId;
+          const columnId = td?.dataset.columnId || th?.dataset.columnId;
+
+          if (action === 'switch-file') selectFile(target.dataset.fileId);
+          if (action === 'drawer-open-file') {
+            selectFile(target.dataset.fileId);
+            closeDrawer();
+          }
+          if (action === 'drawer-delete-file') {
+            deleteFile(target.dataset.fileId);
+          }
+          if (action === 'drawer-delete-download') {
+            if (!confirm('Remove this item from download history?')) return;
+            state.data.downloads = (state.data.downloads || []).filter((item) => item.id !== target.dataset.downloadId);
+            commit();
+          }
+          if (action === 'sort-column') {
+            const next = state.sort.columnId !== columnId || state.sort.direction === 'none' ? 'asc' : state.sort.direction === 'asc' ? 'desc' : 'none';
+            state.sort = { columnId, direction: next };
+            renderer.table();
+          }
+          if (action === 'delete-column') deleteColumn(columnId);
+          if (action === 'delete-row') {
+            const file = activeFile();
+            if (file.rows.length <= 1) return toast('At least one row is required.');
+            if (!confirm('Delete this row?')) return;
+            file.rows = file.rows.filter((row) => row.id !== rowId);
+            commit();
+          }
+          if (action === 'upload-image') chooseImage(rowId, columnId);
+          if (action === 'clear-image') {
+            if (!confirm('Delete this image?')) return;
+            const row = activeFile().rows.find((item) => item.id === rowId);
+            if (row) row.cells[columnId] = { value: '', position: 50 };
+            commit();
+          }
+          if (action === 'preview-image') {
+            const row = activeFile().rows.find((item) => item.id === rowId);
+            const image = row?.cells[columnId];
+            if (image?.value) {
+              state.imageTarget = { rowId, columnId };
+              dom.previewImage.src = image.value;
+              dom.previewImage.style.setProperty('--pos', `${image.position || 50}% 50%`);
+              dom.imagePosition.value = String(image.position || 50);
+              dom.imageModal.classList.add('open');
+            }
+          }
+          if (action === 'select-all') {
+            activeFile().rows.forEach((row) => row.selected = target.checked);
+            commit();
+          }
+        });
+
+        document.addEventListener('input', (event) => {
+          const target = event.target;
+          const td = target.closest?.('td');
+          if (target.dataset.action === 'edit-cell' && td) updateCell(td.dataset.rowId, td.dataset.columnId, target.value);
+          if (target.dataset.action === 'select-row') {
+            const row = activeFile().rows.find((item) => item.id === target.closest('tr').dataset.rowId);
+            if (row) row.selected = target.checked;
+            commit();
+          }
+          if (target.dataset.action === 'rename-column') {
+            const column = getColumn(target.closest('th').dataset.columnId);
+            if (column) column.name = target.textContent.trim() || 'Untitled';
+            requestSave();
+            renderer.summary();
+          }
+        });
+
+        document.addEventListener('focusin', (event) => {
+          const td = event.target.closest?.('td');
+          if (!td) return;
+          if (state.activeCell.rowId === td.dataset.rowId && state.activeCell.columnId === td.dataset.columnId) return;
+          state.activeCell = { rowId: td.dataset.rowId, columnId: td.dataset.columnId };
+          renderer.table();
+          const input = $(`[data-row-id="${state.activeCell.rowId}"][data-column-id="${state.activeCell.columnId}"] .cell`);
+          input?.focus({ preventScroll: true });
+        });
+
+        document.addEventListener('keydown', (event) => {
+          if (!event.target.classList?.contains('cell')) return;
+          if (event.key !== 'Enter' && event.key !== 'Tab') return;
+          const file = activeFile();
+          const rowIndex = file.rows.findIndex((row) => row.id === state.activeCell.rowId);
+          const colIndex = file.columns.findIndex((column) => column.id === state.activeCell.columnId);
+          const nextRow = event.key === 'Enter' ? rowIndex + 1 : rowIndex + (event.shiftKey && event.key === 'Tab' && colIndex === 0 ? -1 : 0);
+          const nextCol = event.key === 'Tab' ? colIndex + (event.shiftKey ? -1 : 1) : colIndex;
+          const safeRow = clamp(nextRow, 0, file.rows.length - 1);
+          const safeCol = clamp(nextCol, 0, file.columns.length - 1);
+          state.activeCell = { rowId: file.rows[safeRow].id, columnId: file.columns[safeCol].id };
+          event.preventDefault();
+          renderer.table();
+          window.requestAnimationFrame(() => $(`[data-row-id="${state.activeCell.rowId}"][data-column-id="${state.activeCell.columnId}"] .cell`)?.focus());
+        });
+
+        document.addEventListener('dragstart', (event) => {
+          const tr = event.target.closest('tr');
+          const th = event.target.closest('th');
+          if (tr && event.target.closest('[data-action="drag-row"]')) state.dragRowId = tr.dataset.rowId;
+          if (th && event.target.closest('[data-action="drag-column"]')) state.dragColumnId = th.dataset.columnId;
+          event.dataTransfer.effectAllowed = 'move';
+        });
+
+        document.addEventListener('dragover', (event) => {
+          if (state.dragRowId || state.dragColumnId) event.preventDefault();
+        });
+
+        document.addEventListener('drop', (event) => {
+          const tr = event.target.closest('tr');
+          const th = event.target.closest('th');
+          if (state.dragRowId && tr && moveItem(activeFile().rows, state.dragRowId, tr.dataset.rowId)) commit();
+          if (state.dragColumnId && th && moveItem(activeFile().columns, state.dragColumnId, th.dataset.columnId)) commit();
+          state.dragRowId = '';
+          state.dragColumnId = '';
+        });
+
+        document.addEventListener('mousedown', (event) => {
+          const handle = event.target.closest('[data-action="resize-column"]');
+          if (!handle) return;
+          const columnId = handle.closest('th').dataset.columnId;
+          const column = getColumn(columnId);
+          state.resize = { column, startX: event.clientX, startWidth: column.width || 150 };
+          event.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (event) => {
+          if (!state.resize) return;
+          state.resize.column.width = clamp(state.resize.startWidth + event.clientX - state.resize.startX, 80, 520);
+          window.requestAnimationFrame(() => renderer.table());
+        });
+
+        document.addEventListener('mouseup', () => {
+          if (state.resize) {
+            state.resize = null;
+            commit(false);
+          }
+        });
+
+        $$('[data-close-modal]').forEach((button) => button.addEventListener('click', () => button.closest('.modal').classList.remove('open')));
+
+        $('#newFileBtn').addEventListener('click', () => {
+          const name = promptUniqueName('Registry name', 'New Registry', 'file');
+          if (!name) return;
+          const file = createFile(name);
+          state.data.files[file.id] = file;
+          state.data.activeFileId = file.id;
+          commit();
+        });
+        $('#renameFileBtn').addEventListener('click', () => {
+          const file = activeFile();
+          const name = promptUniqueName('Registry name', file.name, 'file', file.id);
+          if (name) { file.name = name.trim(); commit(); }
+        });
+        $('#deleteFileBtn').addEventListener('click', () => {
+          deleteFile(state.data.activeFileId);
+        });
+        $('#menuBtn').addEventListener('click', openDrawer);
+        $('#closeDrawerBtn').addEventListener('click', closeDrawer);
+        $('#drawerBackdrop').addEventListener('click', closeDrawer);
+        $('#clearDownloadsBtn').addEventListener('click', () => {
+          if (!confirm('Clear download history from this browser?')) return;
+          state.data.downloads = [];
+          commit();
+        });
+        $('#addRowBtn').addEventListener('click', addRow);
+        $('#addColBtn').addEventListener('click', addColumn);
+        $('#summaryToggleBtn').addEventListener('click', () => {
+          dom.app.classList.toggle('summary-collapsed');
+        });
+        $('#collapseSummaryBtn').addEventListener('click', () => {
+          dom.app.classList.add('summary-collapsed');
+        });
+        $('#statusToggleBtn').addEventListener('click', () => {
+          state.data.showStatus = state.data.showStatus === false;
+          $('#statusToggleBtn').innerHTML = state.data.showStatus === false
+            ? '<i class="ri-checkbox-blank-circle-line"></i> Show Status'
+            : '<i class="ri-checkbox-circle-line"></i> Hide Status';
+          commit();
+        });
+        $('#bulkDeleteBtn').addEventListener('click', () => {
+          const file = activeFile();
+          const selected = file.rows.filter((row) => row.selected).length;
+          if (!selected) return toast('No rows selected.');
+          if (!confirm(`Delete ${selected} selected rows?`)) return;
+          file.rows = file.rows.filter((row) => !row.selected);
+          if (!file.rows.length) file.rows.push(createRow(file.columns));
+          commit();
+        });
+        $('#bulkEditBtn').addEventListener('click', () => {
+          const file = activeFile();
+          const selected = file.rows.filter((row) => row.selected);
+          if (!selected.length) return toast('No rows selected.');
+          const columnName = prompt('Column to edit');
+          const column = file.columns.find((item) => item.name.toLowerCase() === String(columnName || '').toLowerCase());
+          if (!column || column.type === 'image' || column.type === 'total') return toast('Editable column required.');
+          const value = prompt(`Set ${column.name} to`, '');
+          if (value === null) return;
+          selected.forEach((row) => row.cells[column.id] = value);
+          commit();
+        });
+        $('#searchInput').addEventListener('input', debounce((event) => {
+          state.search = event.target.value;
+          renderer.table();
+          renderer.summary();
+        }, 120));
+        $('#printBtn').addEventListener('click', () => window.print());
+        $('#pdfBtn').addEventListener('click', openPdfModal);
+        $('#startPdfBtn').addEventListener('click', exportPdf);
+        $('#exportXlsxBtn').addEventListener('click', async () => {
+          const name = requestExportName('xlsx');
+          if (!name) return;
+          try {
+            const XLSX = await loadXlsx();
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(exportRows());
+            XLSX.utils.book_append_sheet(wb, ws, 'Registry');
+            const fileName = name.endsWith('.xlsx') ? name : `${name}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            recordDownload(fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+          } catch {
+            const csvName = name.replace(/\.xlsx$/i, '.csv');
+            download(csvName.endsWith('.csv') ? csvName : `${csvName}.csv`, toCsv(exportRows()), 'text/csv');
+            toast('Excel library unavailable. CSV exported instead.');
+          }
+        });
+        $('#importBtn').addEventListener('click', () => dom.importFile.click());
+        dom.importFile.addEventListener('change', async () => {
+          const file = dom.importFile.files?.[0];
+          if (!file) return;
+          if (/\.xlsx?$/i.test(file.name)) {
+            try {
+              const XLSX = await loadXlsx();
+              const data = await file.arrayBuffer();
+              const wb = XLSX.read(data);
+              const ws = wb.Sheets[wb.SheetNames[0]];
+              importMatrix(XLSX.utils.sheet_to_json(ws, { header: 1 }), file.name.replace(/\.[^.]+$/, ''));
+            } catch { toast('Could not import Excel file.'); }
+          } else importMatrix(parseCsv(await file.text()), file.name.replace(/\.[^.]+$/, ''));
+          dom.importFile.value = '';
+        });
+        dom.imagePosition.addEventListener('input', () => {
+          const target = state.imageTarget;
+          if (!target) return;
+          const row = activeFile().rows.find((item) => item.id === target.rowId);
+          const image = row?.cells[target.columnId];
+          if (!image) return;
+          image.position = Number(dom.imagePosition.value);
+          dom.previewImage.style.setProperty('--pos', `${image.position}% 50%`);
+          commit(false);
+        });
+        $('#replaceImageBtn').addEventListener('click', () => state.imageTarget && chooseImage(state.imageTarget.rowId, state.imageTarget.columnId));
+        $('#deleteImageBtn').addEventListener('click', () => {
+          const target = state.imageTarget;
+          const row = activeFile().rows.find((item) => item.id === target?.rowId);
+          if (!confirm('Delete this image?')) return;
+          if (row) row.cells[target.columnId] = { value: '', position: 50 };
+          dom.imageModal.classList.remove('open');
+          commit();
+        });
+        document.addEventListener('contextmenu', (event) => {
+          const th = event.target.closest('th[data-column-id]');
+          if (!th) return;
+          event.preventDefault();
+          deleteColumn(th.dataset.columnId);
+        });
+        window.addEventListener('beforeunload', () => storage.save(state.data));
+      };
+
+      const init = () => {
+        ensureRequestedHeadings();
+        $('#statusToggleBtn').innerHTML = state.data.showStatus === false
+          ? '<i class="ri-checkbox-blank-circle-line"></i> Show Status'
+          : '<i class="ri-checkbox-circle-line"></i> Hide Status';
+        bindEvents();
+        renderer.render();
+        storage.save(state.data);
+      };
+
+      return { init };
+    })();
+
+    App.init();
+  </script>
+</body>
+</html>
