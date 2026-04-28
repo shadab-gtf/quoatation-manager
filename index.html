@@ -186,7 +186,6 @@
     }
 
     .toolbar .spacer { flex: 1; }
-    .search { width: 270px; }
     .primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(37, 99, 235, .28); }
     .primary:hover { background: #1d4ed8; }
     .danger { color: var(--danger); border-color: rgba(220, 38, 38, .45); }
@@ -317,6 +316,10 @@
     }
 
     th.frozen { z-index: 4; }
+    tr.row-status-pending td { background: #fffaf0; }
+    tr.row-status-progress td { background: #eff6ff; }
+    tr.row-status-complete td { background: #ecfdf5; }
+    tr.row-status-hold td { background: #fff1f2; }
     tr.active-row td { background: #eef4ff; }
     td.active-col, th.active-col { background: #e8f0ff; }
     tbody tr[hidden] { display: none; }
@@ -355,12 +358,35 @@
 
     .head-cell {
       display: grid;
-      grid-template-columns: 1fr auto auto auto;
+      grid-template-columns: 1fr auto auto;
       align-items: center;
       gap: 5px;
       height: 100%;
       padding: 0 8px;
     }
+
+    th[draggable="true"] {
+      cursor: grab;
+    }
+
+    th.dragging {
+      opacity: .55;
+    }
+
+    th.drag-before::before,
+    th.drag-after::after {
+      content: "";
+      position: absolute;
+      top: 6px;
+      bottom: 6px;
+      width: 4px;
+      border-radius: 999px;
+      background: var(--accent);
+      z-index: 9;
+    }
+
+    th.drag-before::before { left: 0; }
+    th.drag-after::after { right: 0; }
 
     .head-title {
       overflow: hidden;
@@ -766,15 +792,11 @@
       <button type="button" id="addColBtn"><i class="ri-insert-column-right"></i> Add Column</button>
       <button type="button" id="bulkEditBtn"><i class="ri-edit-2-line"></i> Bulk Edit</button>
       <button type="button" id="bulkDeleteBtn" class="danger"><i class="ri-delete-bin-line"></i> Delete Selected</button>
-      <input id="searchInput" class="search" type="search" placeholder="Search registry">
       <div class="spacer"></div>
       <button type="button" id="summaryToggleBtn"><i class="ri-sidebar-fold-line"></i> Summary</button>
       <button type="button" id="statusToggleBtn"><i class="ri-checkbox-circle-line"></i> Hide Status</button>
-      <button type="button" id="importBtn"><i class="ri-upload-2-line"></i> Import</button>
-      <button type="button" id="exportXlsxBtn"><i class="ri-file-excel-2-line"></i> Excel</button>
       <button type="button" id="pdfBtn" class="primary"><i class="ri-file-pdf-2-line"></i> Download PDF</button>
       <button type="button" id="printBtn"><i class="ri-printer-line"></i> Print</button>
-      <input id="importFile" class="hidden-file" type="file" accept=".csv,.xlsx,.xls,text/csv">
     </section>
 
     <main class="workspace">
@@ -808,7 +830,7 @@
           <strong id="selectedCount">0</strong>
         </div>
         <div class="drop" style="margin-top: 14px;">
-          Data is stored only in this browser through localStorage. Images are compressed before saving. Use Excel, CSV, PDF, or print for output.
+          Data is stored only in this browser through localStorage. Images are compressed before saving. Use PDF or print for output.
         </div>
       </aside>
     </main>
@@ -900,8 +922,6 @@
         sheet: $('#sheet'),
         sheetWrap: $('#sheetWrap'),
         saveStatus: $('#saveStatus'),
-        search: $('#searchInput'),
-        importFile: $('#importFile'),
         grandTotal: $('#grandTotal'),
         rowCount: $('#rowCount'),
         selectedCount: $('#selectedCount'),
@@ -978,11 +998,10 @@
           const first = createFile('Product Registry');
           return { activeFileId: first.id, files: { [first.id]: first }, downloads: [], showStatus: true };
         })(),
-        search: '',
-        sort: { columnId: '', direction: 'none' },
         activeCell: { rowId: '', columnId: '' },
         dragRowId: '',
         dragColumnId: '',
+        dragInsertAfter: false,
         resize: null,
         imageTarget: null
       };
@@ -1067,25 +1086,14 @@
         return 'status-pending';
       };
 
+      const rowStatusClass = (row, columns = activeFile().columns) => {
+        const statusColumn = columns.find((column) => isStatusColumn(column));
+        if (!statusColumn) return '';
+        return `row-${statusClass(row.cells[statusColumn.id])}`;
+      };
+
       const filteredRows = () => {
-        const file = activeFile();
-        const query = state.search.trim().toLowerCase();
-        let rows = file.rows;
-        if (query) {
-          rows = rows.filter((row) => file.columns.some((column) => getCellText(row, column).toLowerCase().includes(query)));
-        }
-        if (state.sort.direction !== 'none') {
-          const column = getColumn(state.sort.columnId);
-          if (column) {
-            rows = [...rows].sort((a, b) => {
-              const left = column.type === 'number' || column.type === 'currency' || column.type === 'total' ? parseNumber(getCellText(a, column)) : getCellText(a, column).toLowerCase();
-              const right = column.type === 'number' || column.type === 'currency' || column.type === 'total' ? parseNumber(getCellText(b, column)) : getCellText(b, column).toLowerCase();
-              const result = left > right ? 1 : left < right ? -1 : 0;
-              return state.sort.direction === 'asc' ? result : -result;
-            });
-          }
-        }
-        return rows;
+        return activeFile().rows;
       };
 
       const requestSave = debounce(() => {
@@ -1097,7 +1105,7 @@
             dom.saveStatus.textContent = 'Saved';
           } catch (error) {
             dom.saveStatus.textContent = 'Storage full';
-            toast('Could not save. Remove large images or export to Excel/PDF.');
+            toast('Could not save. Remove large images or export PDF.');
           }
         }, 80);
       }, SAVE_DELAY);
@@ -1159,11 +1167,9 @@
         },
         header(column, index) {
           const active = state.activeCell.columnId === column.id ? ' active-col' : '';
-          const sortMark = state.sort.columnId === column.id && state.sort.direction !== 'none' ? (state.sort.direction === 'asc' ? '<i class="ri-sort-asc"></i>' : '<i class="ri-sort-desc"></i>') : '<i class="ri-expand-up-down-line"></i>';
           return `<th class="${index === 0 ? 'frozen' : ''}${active}" data-column-id="${column.id}" draggable="true">
             <div class="head-cell">
               <span class="head-title" contenteditable="true" spellcheck="false" data-action="rename-column">${sanitize(column.name)}</span>
-              <button type="button" class="icon" data-action="sort-column" title="Sort">${sortMark}</button>
               <button type="button" class="icon danger" data-action="delete-column" title="Delete column"><i class="ri-delete-bin-line"></i></button>
               <button type="button" class="icon drag" data-action="drag-column" title="Drag column"><i class="ri-draggable"></i></button>
             </div>
@@ -1172,8 +1178,9 @@
         },
         row(row, visibleIndex, columns) {
           const activeRow = state.activeCell.rowId === row.id ? ' active-row' : '';
+          const statusRow = rowStatusClass(row);
           const cells = columns.map((column, index) => this.cell(row, column, index)).join('');
-          return `<tr class="${activeRow}" data-row-id="${row.id}" draggable="true">
+          return `<tr class="${statusRow}${activeRow}" data-row-id="${row.id}" draggable="true">
             <td class="row-tools frozen">
               <div class="row-tools-inner">
                 <span class="drag" data-action="drag-row" title="Drag row"><i class="ri-draggable"></i></span>
@@ -1274,11 +1281,27 @@
         return true;
       };
 
+      const clearColumnDragStyles = () => {
+        document.querySelectorAll('th[data-column-id]').forEach((th) => {
+          th.classList.remove('dragging', 'drag-before', 'drag-after');
+        });
+      };
+
+      const moveColumn = (fromId, toId, insertAfter) => {
+        const columns = activeFile().columns;
+        const fromIndex = columns.findIndex((column) => column.id === fromId);
+        const targetIndex = columns.findIndex((column) => column.id === toId);
+        if (fromIndex < 0 || targetIndex < 0 || fromIndex === targetIndex) return false;
+        const [moving] = columns.splice(fromIndex, 1);
+        let insertIndex = columns.findIndex((column) => column.id === toId);
+        if (insertAfter) insertIndex += 1;
+        columns.splice(insertIndex, 0, moving);
+        return true;
+      };
+
       const selectFile = (fileId) => {
         if (!state.data.files[fileId]) return;
         state.data.activeFileId = fileId;
-        state.search = '';
-        dom.search.value = '';
         commit();
       };
 
@@ -1339,29 +1362,6 @@
           commit();
         };
         input.click();
-      };
-
-      const exportRows = () => {
-        const file = activeFile();
-        const columns = visibleColumns(file.columns);
-        return file.rows.map((row) => Object.fromEntries(columns.map((column) => [column.name, column.type === 'total' ? rowTotal(row) : getCellText(row, column)])));
-      };
-
-      const toCsv = (rows) => {
-        if (!rows.length) return '';
-        const headers = Object.keys(rows[0]);
-        const esc = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-        return [headers.map(esc).join(','), ...rows.map((row) => headers.map((header) => esc(row[header])).join(','))].join('\n');
-      };
-
-      const download = (name, content, type) => {
-        const blob = new Blob([content], { type });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = name;
-        link.click();
-        URL.revokeObjectURL(link.href);
-        recordDownload(name, type);
       };
 
       const recordDownload = (name, type) => {
@@ -1709,15 +1709,6 @@
         }
       };
 
-      const loadXlsx = () => new Promise((resolve, reject) => {
-        if (window.XLSX) return resolve(window.XLSX);
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-        script.onload = () => resolve(window.XLSX);
-        script.onerror = () => reject(new Error('Excel library could not load.'));
-        document.head.appendChild(script);
-      });
-
       const loadHtml2Pdf = () => new Promise((resolve, reject) => {
         if (window.html2pdf) return resolve(window.html2pdf);
         const script = document.createElement('script');
@@ -1726,48 +1717,6 @@
         script.onerror = () => reject(new Error('PDF library could not load.'));
         document.head.appendChild(script);
       });
-
-      const parseCsv = (text) => {
-        const rows = [];
-        let row = [], value = '', quoted = false;
-        for (let i = 0; i < text.length; i++) {
-          const char = text[i], next = text[i + 1];
-          if (char === '"' && quoted && next === '"') { value += '"'; i++; }
-          else if (char === '"') quoted = !quoted;
-          else if (char === ',' && !quoted) { row.push(value); value = ''; }
-          else if ((char === '\n' || char === '\r') && !quoted) {
-            if (char === '\r' && next === '\n') i++;
-            row.push(value); rows.push(row); row = []; value = '';
-          } else value += char;
-        }
-        row.push(value);
-        if (row.some(Boolean)) rows.push(row);
-        return rows;
-      };
-
-      const importMatrix = (matrix, name = 'Imported Registry') => {
-        if (!matrix.length) return toast('No rows found.');
-        const uniqueName = hasFileName(name) ? promptUniqueName('Imported registry name already exists. Enter a different name.', name, 'file') : name;
-        if (!uniqueName) return;
-        const headers = matrix[0].map((item, index) => String(item || `Column ${index + 1}`));
-        const columns = headers.map((header) => ({
-          id: id(),
-          name: header,
-          type: /total/i.test(header) ? 'total' : /status/i.test(header) ? 'status' : /qty|quantity/i.test(header) ? 'number' : /cost|price|rate/i.test(header) ? 'currency' : 'text',
-          width: 150,
-          options: /status/i.test(header) ? STATUS_OPTIONS : undefined
-        }));
-        const file = { id: id(), name: uniqueName, createdAt: now(), updatedAt: now(), columns, rows: [] };
-        file.rows = matrix.slice(1).map((items) => ({
-          id: id(),
-          selected: false,
-          cells: Object.fromEntries(columns.map((column, index) => [column.id, items[index] ?? '']))
-        }));
-        if (!file.rows.length) file.rows.push(createRow(columns));
-        state.data.files[file.id] = file;
-        state.data.activeFileId = file.id;
-        commit();
-      };
 
       const bindEvents = () => {
         document.addEventListener('click', async (event) => {
@@ -1791,11 +1740,6 @@
             if (!confirm('Remove this item from download history?')) return;
             state.data.downloads = (state.data.downloads || []).filter((item) => item.id !== target.dataset.downloadId);
             commit();
-          }
-          if (action === 'sort-column') {
-            const next = state.sort.columnId !== columnId || state.sort.direction === 'none' ? 'asc' : state.sort.direction === 'asc' ? 'desc' : 'none';
-            state.sort = { columnId, direction: next };
-            renderer.table();
           }
           if (action === 'delete-column') deleteColumn(columnId);
           if (action === 'delete-row') {
@@ -1876,21 +1820,39 @@
           const tr = event.target.closest('tr');
           const th = event.target.closest('th');
           if (tr && event.target.closest('[data-action="drag-row"]')) state.dragRowId = tr.dataset.rowId;
-          if (th && event.target.closest('[data-action="drag-column"]')) state.dragColumnId = th.dataset.columnId;
+          if (th?.dataset.columnId && !event.target.closest('[data-action="resize-column"], .head-title, [data-action="delete-column"]')) {
+            state.dragColumnId = th.dataset.columnId;
+            th.classList.add('dragging');
+          }
           event.dataTransfer.effectAllowed = 'move';
         });
 
         document.addEventListener('dragover', (event) => {
           if (state.dragRowId || state.dragColumnId) event.preventDefault();
+          const th = event.target.closest('th[data-column-id]');
+          if (!state.dragColumnId || !th || th.dataset.columnId === state.dragColumnId) return;
+          document.querySelectorAll('th[data-column-id]').forEach((cell) => cell.classList.remove('drag-before', 'drag-after'));
+          const rect = th.getBoundingClientRect();
+          state.dragInsertAfter = event.clientX > rect.left + rect.width / 2;
+          th.classList.add(state.dragInsertAfter ? 'drag-after' : 'drag-before');
         });
 
         document.addEventListener('drop', (event) => {
           const tr = event.target.closest('tr');
           const th = event.target.closest('th');
           if (state.dragRowId && tr && moveItem(activeFile().rows, state.dragRowId, tr.dataset.rowId)) commit();
-          if (state.dragColumnId && th && moveItem(activeFile().columns, state.dragColumnId, th.dataset.columnId)) commit();
+          if (state.dragColumnId && th?.dataset.columnId && moveColumn(state.dragColumnId, th.dataset.columnId, state.dragInsertAfter)) commit();
           state.dragRowId = '';
           state.dragColumnId = '';
+          state.dragInsertAfter = false;
+          clearColumnDragStyles();
+        });
+
+        document.addEventListener('dragend', () => {
+          state.dragRowId = '';
+          state.dragColumnId = '';
+          state.dragInsertAfter = false;
+          clearColumnDragStyles();
         });
 
         document.addEventListener('mousedown', (event) => {
@@ -1977,46 +1939,9 @@
           selected.forEach((row) => row.cells[column.id] = value);
           commit();
         });
-        $('#searchInput').addEventListener('input', debounce((event) => {
-          state.search = event.target.value;
-          renderer.table();
-          renderer.summary();
-        }, 120));
         $('#printBtn').addEventListener('click', () => window.print());
         $('#pdfBtn').addEventListener('click', openPdfModal);
         $('#startPdfBtn').addEventListener('click', exportPdf);
-        $('#exportXlsxBtn').addEventListener('click', async () => {
-          const name = requestExportName('xlsx');
-          if (!name) return;
-          try {
-            const XLSX = await loadXlsx();
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(exportRows());
-            XLSX.utils.book_append_sheet(wb, ws, 'Registry');
-            const fileName = name.endsWith('.xlsx') ? name : `${name}.xlsx`;
-            XLSX.writeFile(wb, fileName);
-            recordDownload(fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-          } catch {
-            const csvName = name.replace(/\.xlsx$/i, '.csv');
-            download(csvName.endsWith('.csv') ? csvName : `${csvName}.csv`, toCsv(exportRows()), 'text/csv');
-            toast('Excel library unavailable. CSV exported instead.');
-          }
-        });
-        $('#importBtn').addEventListener('click', () => dom.importFile.click());
-        dom.importFile.addEventListener('change', async () => {
-          const file = dom.importFile.files?.[0];
-          if (!file) return;
-          if (/\.xlsx?$/i.test(file.name)) {
-            try {
-              const XLSX = await loadXlsx();
-              const data = await file.arrayBuffer();
-              const wb = XLSX.read(data);
-              const ws = wb.Sheets[wb.SheetNames[0]];
-              importMatrix(XLSX.utils.sheet_to_json(ws, { header: 1 }), file.name.replace(/\.[^.]+$/, ''));
-            } catch { toast('Could not import Excel file.'); }
-          } else importMatrix(parseCsv(await file.text()), file.name.replace(/\.[^.]+$/, ''));
-          dom.importFile.value = '';
-        });
         dom.imagePosition.addEventListener('input', () => {
           const target = state.imageTarget;
           if (!target) return;
